@@ -7,13 +7,15 @@ datasource db {
 }
 
 model Workspace {
-  id        String   @id @default(cuid())
-  clerkId   String   @unique
-  name      String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id          String   @id @default(cuid())
+  clerkId     String   @unique
+  name        String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
-  variants  Variant[]
+  variants     Variant[]
+  experiments  Experiment[]
+  events       Event[]
 }
 
 model Variant {
@@ -26,8 +28,61 @@ model Variant {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  workspace          Workspace          @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  experimentVariants ExperimentVariant[]
+  events             Event[]
 
   @@unique([workspaceId, slug])
   @@index([workspaceId])
+}
+
+model Experiment {
+  id          String           @id @default(cuid())
+  workspaceId String
+  name        String
+  status      ExperimentStatus @default(RUNNING)
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  workspace   Workspace          @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  variants    ExperimentVariant[]
+  events      Event[]
+
+  @@index([workspaceId])
+}
+
+model ExperimentVariant {
+  id           String @id @default(cuid())
+  experimentId String
+  variantId    String
+  weight       Float  @default(0.5)
+
+  experiment   Experiment @relation(fields: [experimentId], references: [id], onDelete: Cascade)
+  variant      Variant    @relation(fields: [variantId], references: [id], onDelete: Cascade)
+
+  @@unique([experimentId, variantId])
+}
+
+model Event {
+  id           String    @id @default(cuid())
+  workspaceId  String
+  experimentId String
+  variantId    String
+  sessionId    String
+  eventType    String
+  metadata     Json      @default("{}")
+  createdAt    DateTime  @default(now())
+
+  workspace    Workspace  @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  experiment   Experiment @relation(fields: [experimentId], references: [id], onDelete: Cascade)
+  variant      Variant    @relation(fields: [variantId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId, experimentId, createdAt])
+  @@index([variantId, eventType])
+}
+
+enum ExperimentStatus {
+  RUNNING
+  PAUSED
+  COMPLETED
 }
